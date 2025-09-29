@@ -52,8 +52,8 @@ function form_input_disable()
 	document.getElementById("maakunta").value = "";
 	document.getElementById("is_up_to_date").disabled = true;
 	document.getElementById("is_up_to_date").checked = false;
-	document.getElementById("cancel").disabled = true;
-	document.getElementById("save").disabled = true;
+	document.getElementById("button_cancel").disabled = true;
+	document.getElementById("button_save").disabled = true;
 }
 
 function form_input_enable()
@@ -66,7 +66,9 @@ function form_input_enable()
 	document.getElementById("is_up_to_date").checked = false;
 	document.getElementById("cancel").disabled = false;
 	document.getElementById("save").disabled = false;
-	document.getElementById("maakunta").innerHTML = maakunta_select(0, "maakuntaSelect", true);
+	document.getElementById("button_save").disabled = false;
+	document.getElementById("button_cancel").disabled = false;
+	document.getElementById("maakunta").innerHTML = maakunta_select(Number(document.getElementById("maakunta_tulostus_valinta").value), "maakuntaSelect", true);
 }
 
 function line_new()
@@ -111,14 +113,13 @@ function line_save()
 {
 	let action_state = document.getElementById("action_state").value;
 
-	if(action_state == "no_action")
+	if(action_state != "new" && action_state != "edit")
 	{
-		form_input_enable();
-		form_input_clear();
 		return;
 	}
 
 	let node_name = document.getElementById("node_name").value;
+	let node_email = document.getElementById("node_email").value;
 
 	if(node_name.length === 0)
 	{
@@ -128,23 +129,21 @@ function line_save()
 
 	if(action_state == "new")
 	{
-		if(line_exists_by_name(node_name, -1) === true)
+		if(line_exists_by_email(node_email, -1, true) === true)
 		{
-		alert("Rivi nimellä " + node_name + " on olemassa");
 		return;
 		}
 	}
 	else
 	{
-		if(line_exists_by_name(node_name, current_id) === true)
+		if(line_exists_by_email(node_email, current_id, true) === true)
 		{
-			alert("Rivi nimellä " + node_name + " on olemassa");
 			return;
 		}
 	}
 
 	let node_address = document.getElementById("node_address").value;
-	let node_email = document.getElementById("node_email").value;
+
 	let maakuntaID = document.getElementById("maakuntaSelect").value;
 	let up_to_date = document.getElementById("is_up_to_date").checked;
 	
@@ -165,34 +164,99 @@ function line_save()
 	table_refresh();
 }
 
-
-
-function line_exists_by_name(name, id)
+function line_exists_by_email(email, id, param_alert)
 {
 	let temp_id = Number(id);
+	let show_alert = false;
+	let found = false;
+	let i = 0;
+	if(param_alert != void 0)
+	{
+		if(param_alert == true)
+		{
+			show_alert = true;
+		}
+	}
+
 	if(is_id_valid(id))
 	{
-		for(let i = 0; i < listing.length; i++)
+		for(i = 0; i < listing.length; i++)
 		{
-			if(listing[i].name == name && i != id)
+			if(listing[i].email == email && i != id)
 			{
-				return true;
+				found = true;
+				break;
 			}
 		}
 	}
 	else
 	{
-		for(let i = 0; i < listing.length; i++)
+		for(i = 0; i < listing.length; i++)
 		{
-			if(listing[i].name == name)
+			if(listing[i].email == email)
 			{
-				return true;
+				found = true;
+				break;
 			}
 		}
 	}
 
-	return false;
+	
+	if(show_alert && found)
+	{
+		alert("Rivi sähköpostiosoitteella : " + email + " on olemassa nimellä : " + listing[i].name);
+	}
+
+	return found;
 }
+
+
+function line_exists_by_name(name, id, param_alert)
+{
+	let temp_id = Number(id);
+	let show_alert = false;
+	let found = false;
+	let i = 0;
+	if(param_alert != void 0)
+	{
+		if(param_alert == true)
+		{
+			show_alert = true;
+		}
+	}
+
+	if(is_id_valid(id))
+	{
+		for(i = 0; i < listing.length; i++)
+		{
+			if(listing[i].name == name && i != id)
+			{
+				found = true;
+				break;
+			}
+		}
+	}
+	else
+	{
+		for(i = 0; i < listing.length; i++)
+		{
+			if(listing[i].name == name)
+			{
+				found = true;
+				break;
+			}
+		}
+	}
+
+	
+	if(show_alert && found)
+	{
+		alert("Rivi nimellä : " + email + " on olemassa sähköpostiosoitteella : " + listing[i].email);
+	}
+
+	return found;
+}
+
 
 function update_currentID(new_id)
 {
@@ -564,32 +628,35 @@ function table_header()
 		let table = document.getElementById("email_table");
 
 		let row = table.insertRow(0);
+
 		let cell = row.insertCell(0);
-		cell.innerHTML = "Valitse";
-
-		cell = row.insertCell(1);
-		cell.innerHTML = "ID";
-
-		cell = row.insertCell(2);
-		cell.innerHTML = "Nimi";
-
-		cell = row.insertCell(3);
-		cell.innerHTML = "Osoite";
-
-		cell = row.insertCell(4);
-		cell.innerHTML = "Email";
-
-		cell = row.insertCell(5);
-		cell.innerHTML = "Maakunta";
-
-		cell = row.insertCell(6);
-		cell.innerHTML = "Ajantasalla";
-
-		cell = row.insertCell(7);
 		cell.innerHTML = "Poista";
 
-		cell = row.insertCell(8);
+		cell = row.insertCell(1);
 		cell.innerHTML = "Muokkaa";
+
+		cell = row.insertCell(2);
+		cell.innerHTML = "Valitse";
+/*
+		cell = row.insertCell(3);
+		cell.innerHTML = "ID";
+*/
+		cell = row.insertCell(3);
+		cell.innerHTML = "Email";
+
+		cell = row.insertCell(4);
+		cell.innerHTML = "Maakunta";
+
+		cell = row.insertCell(5);
+		cell.innerHTML = "Nimi";
+
+		cell = row.insertCell(6);
+		cell.innerHTML = "Osoite";
+
+		cell = row.insertCell(7);
+		cell.innerHTML = "Ajantasalla";
+
+
 }
 
 function table_clear()
@@ -621,26 +688,34 @@ function table_refresh()
 			if(listing[i])
 			{
 				let row = table.insertRow(i+1);
-
-				let cell = row.insertCell(0);
-				cell.innerHTML = String('<input type="checkbox" id=' + i + 'name="select" >');
-			
-				cell = row.insertCell(1);
-				cell.innerHTML = i;
+				let cell;
+				cell = row.insertCell(0);
+				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
+				cell.innerHTML = array.join(' ');
 	
+				cell = row.insertCell(1);
+				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
+				cell.innerHTML = array.join(' ');
+
 				cell = row.insertCell(2);
-				cell.innerHTML = listing[i].name;
-		
+				cell.innerHTML = String('<input type="checkbox" id=' + i + 'name="select" >');
+/*			
 				cell = row.insertCell(3);
-				cell.innerHTML = String('<a href="https://' + listing[i].address + '" target="_blank">' + listing[i].address + '</a>');
-		
-				cell = row.insertCell(4);
+				cell.innerHTML = i;
+*/
+				cell = row.insertCell(3);
 				cell.innerHTML = listing[i].email;
 
-				cell = row.insertCell(5);
+				cell = row.insertCell(4);
 				cell.innerHTML = maakunta_get(listing[i].maakunta);
 
+				cell = row.insertCell(5);
+				cell.innerHTML = listing[i].name;
+		
 				cell = row.insertCell(6);
+				cell.innerHTML = String('<a href="https://' + listing[i].address + '" target="_blank">' + listing[i].address + '</a>');
+		
+				cell = row.insertCell(7);
 				if(listing[i].up_to_date)
 				{
 					cell.innerHTML = "X";	
@@ -649,13 +724,7 @@ function table_refresh()
 				{
 					cell.innerHTML = "";	
 				}
-				cell = row.insertCell(7);
-				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
-				cell.innerHTML = array.join(' ');
-	
-				cell = row.insertCell(8);
-				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
-				cell.innerHTML = array.join(' ');
+
 			}
 		}
 	}
@@ -667,26 +736,36 @@ function table_refresh()
 			if(Number(listing[i].maakunta) == id)
 			{
 				let row = table.insertRow(counter+1);
+				let cell;
 
-				let cell = row.insertCell(0);
-				cell.innerHTML = String('<input type="checkbox" id=' + i + 'name="select" >');
-			
-				cell = row.insertCell(1);
-				cell.innerHTML = i;
+				cell = row.insertCell(0);
+				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
+				cell.innerHTML = array.join(' ');
 	
+				cell = row.insertCell(1);
+				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
+				cell.innerHTML = array.join(' ');
+
 				cell = row.insertCell(2);
+				cell.innerHTML = String('<input type="checkbox" id=' + i + 'name="select" >');
+/*			
+				cell = row.insertCell(3);
+				cell.innerHTML = i;
+*/
+	
+				cell = row.insertCell(3);
 				cell.innerHTML = listing[i].name;
 		
-				cell = row.insertCell(3);
+				cell = row.insertCell(4);
 				cell.innerHTML = String('<a href="https://' + listing[i].address + '" target="_blank">' + listing[i].address + '</a>');
 		
-				cell = row.insertCell(4);
+				cell = row.insertCell(5);
 				cell.innerHTML = listing[i].email;
 
-				cell = row.insertCell(5);
+				cell = row.insertCell(6);
 				cell.innerHTML = maakunta_get(listing[i].maakunta);
 
-				cell = row.insertCell(6);
+				cell = row.insertCell(7);
 				if(listing[i].up_to_date)
 				{
 					cell.innerHTML = "X";
@@ -697,13 +776,7 @@ function table_refresh()
 				}
 				cell.className = "up_to_date";
 
-				cell = row.insertCell(7);
-				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
-				cell.innerHTML = array.join(' ');
-	
-				cell = row.insertCell(8);
-				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
-				cell.innerHTML = array.join(' ');
+
 				counter++;
 			}
 		}
@@ -895,7 +968,10 @@ td::up_to_date{
 	text-align: center;
 }
 
-
+.top_bar{
+	text-align: center;
+background-color: #38444d;
+}
 ul {
   list-style-type: none;
   margin: 0;
@@ -914,6 +990,7 @@ li a, .dropbtn {
   text-align: center;
   padding: 14px 16px;
   text-decoration: none;
+  border: 1px solid #4CAF50;
 }
 
 li a:hover, .dropdown:hover .dropbtn {
@@ -962,29 +1039,36 @@ li.dropdown {
 
   overflow: hidden;
   background-color: #38444d;
+  border: 1px solid #4CAF50;
 }
 input[type='file'] {
   color: transparent;
+}
+
+.application_title
+{
+	color:white;
+	font-size: 4.3vh; 
 }
 </style>
 </head>
 	<body>
 		<div>
 		<table border="1">
-			<caption><h1>Postituslistan hallinta</h1><caption>
+			
 			<tr>
-				<td>
+				<td class="top_bar">
 					<span style="float: left;"><ul>
 						<li class="dropdown">
 							<a href="javascript:void(0)" class="dropbtn">Listaus</a>
 							<div class="dropdown-content">
 								<a onclick="listing_save_json()">Tallenna tiedosto</a>
-								<a onclick="listing_purge()">Tyhjenn listaus</a>
+								<a onclick="listing_purge()">Tyhjennä listaus</a>
 								<a onclick="listing_delete_selected()"> Poista valitut</a>
 								<a onclick="listing_print()">Tulosta osoitelistaus</a>
 							</div>
 						</li>
-
+	
 						<li class="dropdown">
 							<a href="javascript:void(0)" class="dropbtn">Rivi</a>
 							<div class="dropdown-content">
@@ -1004,13 +1088,11 @@ input[type='file'] {
 							</div>
 						<li>
 					</ul></span>
+		
+					<span class="application_title">Postituslistan hallinta</span>
+		
 					<span style="float: right;"><ul>
-						<li class="dropdown">
-							<input type="button" onclick="line_cancel()" class="button_top" id="cancel" value="Peruuta"/>
-						</li>
-						<li class="dropdown">
-							<input type="button" onclick="line_save()" class="button_top" id="save" value="Tallenna"/>
-						</li>
+		
 						<li class="dropdown">
 							<span id="maakunta_tu_valinta" class="dropbtn"> </span>
 						</li>
@@ -1021,29 +1103,32 @@ input[type='file'] {
 			<tr><td><table>
 			<tr>
 				<th align="right">Nimi</th>
-				<td><input type="text" id="node_name" name="name"/></td>
+				<td colspan="2"><input type="text" id="node_name" name="name"/></td>
 			</tr>
 			
 			<tr>
 				<th align="right">Osoite</th>
-				<td><input type="text" id="node_address" name="address"/></td>
+				<td colspan="2"><input type="text" id="node_address" name="address"/></td>
 			</tr>
 			
 			<tr>
 				<th align="right">Email</th>
-				<td><input type="text" id="node_email" name="email"/></td>
+				<td colspan="2"><input type="text" id="node_email" name="email"/></td>
 			
 			</tr>
 
 			<tr>
 				<th align="right">Maakunta</th>
-				<td id="maakunta"></td>
+				<td id="maakunta"  colspan="2"></td>
 			</tr>
 
 			<tr>
 				<th align="right">On ajantasalla</th>
 				<td><input type="checkbox" id="is_up_to_date"/></td>
-			</tr></table></td></tr>
+				<td><input type="button" id="button_cancel" value="Peruuta" onClick="line_cancel()"/><input type="button" id="button_save" onClick="line_save()" value="Tallenna"/></td>
+			</tr></table></td>
+
+			</tr>
 			<tr><td align="right">Lataa listaus tiedostosta<input type="file" id="listing_file" onchange="listing_load_json()" value="Lataa tiedosto" />Lisää listaukseen tiedostosta<input type="file" id="listing_append" onchange="listing_append_json()" value="Lisää tiedostosta" />Lisää puolipisteellä eroteltu listaus<input type="file" id="listing_append_semicolon" onchange="listing_append_semicolon()" value="Lisää tiedostosta" /></td></tr>
 
 			<tr>
