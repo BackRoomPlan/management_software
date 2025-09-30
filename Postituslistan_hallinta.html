@@ -28,7 +28,7 @@
 
 let listing = new Array();
 let current_id = 0;
-
+let last_line_string = "";
 window.onload = function()
 {
 	listing_load_localStorage();
@@ -144,18 +144,28 @@ function line_save()
 
 	let maakuntaID = document.getElementById("maakuntaSelect").value;
 	let up_to_date = document.getElementById("is_up_to_date").checked;
+	let date;
+	
+	if(up_to_date == true)
+	{
+		date = Date.now();
+	}
+	else 
+	{
+		date = -1;		
+	}
 	
 	if(action_state == "edit")
 	{
-		listing[current_id] = {name : node_name, address : node_address, email : node_email, maakunta : maakuntaID, up_to_date : up_to_date};
+		listing[current_id] = {name : node_name, address : node_address, email : node_email, maakunta : maakuntaID, up_to_date : up_to_date, up_to_date_on : date};
 	}
 	else if(action_state == "new")
 	{
-		listing.push({name : node_name, address : node_address, email : node_email, maakunta : maakuntaID, up_to_date : up_to_date});
-		current_id = listing.length - 1;
+		listing.push({name : node_name, address : node_address, email : node_email, maakunta : maakuntaID, up_to_date : up_to_date, up_to_date_on : date});
 	}
 
-
+	current_id = 0;
+	last_line_string = String(node_name + " : " + node_address);	
 	document.getElementById("action_state").value = "no_action";
 	
 	listing_save_to_localStore();
@@ -276,7 +286,6 @@ function line_show(id)
 		//table.rows[id].className = 'selected';
 
 		document.getElementById("is_up_to_date").checked = listing[id].up_to_date;
-		
 
 		if( document.getElementById("action_state").value == "no_action")
 		{
@@ -418,6 +427,7 @@ function listing_clear_up_to_date()
 		for(let i = 0; i < listing.length; i++)
 		{
 			listing[i].up_to_date = false;
+			listing[i].up_to_date_on = -1;
 		}
 
 		table_refresh();
@@ -559,8 +569,6 @@ function listing_print_selected()
 
 function listing_print_up_to_date()
 {
-
-
 	/// tulosta listaukseen vain he osoitteet jotka on valittu
 	let listaus = "";
 
@@ -711,6 +719,8 @@ function table_header()
 		cell = row.insertCell(7);
 		cell.innerHTML = "Ajantasalla";
 
+		cell = row.insertCell(8);
+		cell.innerHTML = "Ajantasalla päivänä";
 
 }
 
@@ -723,11 +733,31 @@ function table_clear()
 	}
 }
 
+function get_date_string(unix_time)
+{
+	if(unix_time <= -1)
+	{
+		return "";
+	}
+	const options = {
+  		year: "numeric",
+		month: "numeric",
+		day: "numeric",
+	};
+	
+	let locale = undefined; 
+	
+	let date = new Date(unix_time);
+	
+	return date.toLocaleString(locale, options);
+}
+
 function table_refresh()
 {
 	document.getElementById("tuloste").value = "";
 	document.getElementById("action_state").value = "no_action";
 	
+	document.getElementById("last_line").innerHTML = last_line_string;
 	let id = Number(document.getElementById("maakunta_tulostus_valinta").value);
 	table_clear();
 	table_header();
@@ -779,6 +809,10 @@ function table_refresh()
 				{
 					cell.innerHTML = "";	
 				}
+				
+				cell = row.insertCell(8);
+				let date = new Date(listing[i].up_to_date_on);
+				cell.innerHTML = get_date_string(listing[i].up_to_date_on);
 
 			}
 		}
@@ -1158,6 +1192,10 @@ input[type='file'] {
 				</td>
 			</tr>
 			<tr><td><table>
+			<tr>
+				<th align="right">Viimeksi lisätty/muokattu</th>
+				<td colspan="2"><span id="last_line"></span></td>
+			</tr>
 			<tr>
 				<th align="right">Nimi</th>
 				<td colspan="2"><input type="text" id="node_name" name="name"/></td>
