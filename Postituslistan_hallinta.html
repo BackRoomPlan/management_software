@@ -34,14 +34,21 @@ window.onload = function()
 	listing_load_localStorage();
 }
 
-function form_input_clear()
+function form_clear()
 {
 	document.getElementById("node_name").value = "";
 	document.getElementById("node_address").value = "";
 	document.getElementById("node_email").value = "";
-	document.getElementById("maakunta").innerHTML = "";
-document.getElementById("maakunta").innerHTML = maakunta_select(0, "maakuntaSelect", true);
-//	document.getElementById("maakunta_tu_valinta").innerHTML = maakunta_select(0, "maakunta_tulostus_valinta", false)
+	document.getElementById("maakunta").innerHTML = maakunta_select(0, "maakuntaSelect");
+	document.getElementById("maakunta_tu_valinta").innerHTML = maakunta_select(0, "maakunta_tulostus_valinta")
+}
+
+function form_clear_min()
+{
+	document.getElementById("node_name").value = "";
+	document.getElementById("node_address").value = "";
+	document.getElementById("node_email").value = "";
+	document.getElementById("maakunta").innerHTML = maakunta_select(0, "maakuntaSelect");
 }
 
 function form_input_disable()
@@ -49,11 +56,9 @@ function form_input_disable()
 	document.getElementById("node_name").disabled = true;
 	document.getElementById("node_address").disabled = true;
 	document.getElementById("node_email").disabled = true;
-	document.getElementById("maakunta").value = "";
+	document.getElementById("maakuntaSelect").disabled = true;
 	document.getElementById("is_up_to_date").disabled = true;
 	document.getElementById("is_up_to_date").checked = false;
-	document.getElementById("button_cancel").disabled = true;
-	document.getElementById("button_save").disabled = true;
 }
 
 function form_input_enable()
@@ -64,33 +69,54 @@ function form_input_enable()
 	document.getElementById("maakuntaSelect").disabled = false;
 	document.getElementById("is_up_to_date").disabled = false;
 	document.getElementById("is_up_to_date").checked = false;
-	document.getElementById("button_save").disabled = false;
-	document.getElementById("button_cancel").disabled = false;
-	document.getElementById("maakunta").innerHTML = maakunta_select(Number(document.getElementById("maakunta_tulostus_valinta").value), "maakuntaSelect", true);
 }
 
-function line_new()
+function form_set_new()
 {
-	form_input_clear();
-	form_input_enable();
-	document.getElementById("action_state").value = "new";
+	let action_state = document.getElementById("action_state").value;
+
+	if(action_state == "no_action")
+	{
+		document.getElementById("previous").value = "Peruuta";
+		document.getElementById("next").value = "Tallenna";
+		form_clear();
+		form_input_enable();
+		document.getElementById("action_state").value = "new";
+	}
+	else
+	{
+		document.getElementById("previous").value = "Edellinen";
+		document.getElementById("next").value = "Seuraava";
+		line_show(current_id);
+		form_input_disable();
+		document.getElementById("action_state").value = "no_action";
+	}
+
+	document.getElementById("maakunta").value = maakunta
 }
 
 function form_set_edit()
 {
-	document.getElementById("cancel").disabled = false;
-	document.getElementById("save").disabled = false;
-	form_input_enable();
+	if(document.getElementById("action_state").value == "no_action")
+	{
+		document.getElementById("action_state").value = "edit"
+		document.getElementById("next").value = "Tallenna";
+		document.getElementById("previous").value = "Peruuta muokkaus";
+		form_input_enable();
+		return true;
+	}
 
+	return false;
 }
 
 
-function line_cancel()
+function line_delete()
 {
-	current_id = 0;
-	form_input_clear();
-	form_input_disable();
-	document.getElementById("action_state").value = "no_action";
+	if(confirm("Haluatko poistaa rivin?") === false)
+	{
+		return;
+	}
+	line_action_delete(current_id);
 }
 
 function line_edit(id)
@@ -100,8 +126,7 @@ function line_edit(id)
 	if(is_id_valid(id))
 	{
 		current_id = temp_id;
-		form_input_enable();
-		document.getElementById("action_state").value = "edit";
+		form_set_edit();
 		line_show(current_id);
 		window.scrollTo({ top: 0, behavior: 'smooth' });
 	}
@@ -111,13 +136,16 @@ function line_save()
 {
 	let action_state = document.getElementById("action_state").value;
 
-	if(action_state != "new" && action_state != "edit")
+	if(action_state == "no_action")
 	{
+		document.getElementById("action_state").value = "edit"
+		document.getElementById("previous").value = "Peruuta";
+		document.getElementById("next").value = "Tallenna muokkaus";
+		form_input_enable();
 		return;
 	}
 
 	let node_name = document.getElementById("node_name").value;
-	let node_email = document.getElementById("node_email").value;
 
 	if(node_name.length === 0)
 	{
@@ -127,21 +155,23 @@ function line_save()
 
 	if(action_state == "new")
 	{
-		if(line_exists_by_email(node_email, -1, true) === true)
+		if(line_exists_by_name(node_name, -1) === true)
 		{
+		alert("Rivi nimellä " + node_name + " on olemassa");
 		return;
 		}
 	}
 	else
 	{
-		if(line_exists_by_email(node_email, current_id, true) === true)
+		if(line_exists_by_name(node_name, current_id) === true)
 		{
+			alert("Rivi nimellä " + node_name + " on olemassa");
 			return;
 		}
 	}
 
 	let node_address = document.getElementById("node_address").value;
-
+	let node_email = document.getElementById("node_email").value;
 	let maakuntaID = document.getElementById("maakuntaSelect").value;
 	let up_to_date = document.getElementById("is_up_to_date").checked;
 	
@@ -155,106 +185,45 @@ function line_save()
 		current_id = listing.length - 1;
 	}
 
-
+	document.getElementById("previous").value = "Edellinen";
+	document.getElementById("next").value = "Seuraava";
+	document.getElementById("maakuntaSelect").disabled = true;
 	document.getElementById("action_state").value = "no_action";
-	
+	form_input_disable();
+
 	listing_save_to_localStore();
+	line_show(current_id);
 	table_refresh();
 }
 
-function line_exists_by_email(email, id, param_alert)
+
+
+function line_exists_by_name(name, id)
 {
 	let temp_id = Number(id);
-	let show_alert = false;
-	let found = false;
-	let i = 0;
-	if(param_alert != void 0)
-	{
-		if(param_alert == true)
-		{
-			show_alert = true;
-		}
-	}
-
 	if(is_id_valid(id))
 	{
-		for(i = 0; i < listing.length; i++)
-		{
-			if(listing[i].email == email && i != id)
-			{
-				found = true;
-				break;
-			}
-		}
-	}
-	else
-	{
-		for(i = 0; i < listing.length; i++)
-		{
-			if(listing[i].email == email)
-			{
-				found = true;
-				break;
-			}
-		}
-	}
-
-	
-	if(show_alert && found)
-	{
-		alert("Rivi sähköpostiosoitteella : " + email + " on olemassa nimellä : " + listing[i].name);
-	}
-
-	return found;
-}
-
-
-function line_exists_by_name(name, id, param_alert)
-{
-	let temp_id = Number(id);
-	let show_alert = false;
-	let found = false;
-	let i = 0;
-	if(param_alert != void 0)
-	{
-		if(param_alert == true)
-		{
-			show_alert = true;
-		}
-	}
-
-	if(is_id_valid(id))
-	{
-		for(i = 0; i < listing.length; i++)
+		for(let i = 0; i < listing.length; i++)
 		{
 			if(listing[i].name == name && i != id)
 			{
-				found = true;
-				break;
+				return true;
 			}
 		}
 	}
 	else
 	{
-		for(i = 0; i < listing.length; i++)
+		for(let i = 0; i < listing.length; i++)
 		{
 			if(listing[i].name == name)
 			{
-				found = true;
-				break;
+				return true;
 			}
 		}
 	}
 
-	
-	if(show_alert && found)
-	{
-		alert("Rivi nimellä : " + email + " on olemassa sähköpostiosoitteella : " + listing[i].email);
-	}
-
-	return found;
+	return false;
 }
-
 
 function update_currentID(new_id)
 {
@@ -270,7 +239,7 @@ function line_show(id)
 		document.getElementById("node_name").value = listing[id].name;
 		document.getElementById("node_address").value = listing[id].address;
 		document.getElementById("node_email").value = listing[id].email;
-		document.getElementById("maakunta").innerHTML = maakunta_select(listing[id].maakunta, "maakuntaSelect", true);
+		document.getElementById("maakunta").innerHTML = maakunta_select(listing[id].maakunta, "maakuntaSelect");
 
 		let table = document.getElementById("email_table");
 		//table.rows[id].className = 'selected';
@@ -286,6 +255,102 @@ function line_show(id)
 	else
 	{
 		form_clear();
+	}
+}
+
+function line_next()
+{
+	if(document.getElementById("action_state").value == "no_action")
+	{
+		let temp_id = current_id + 1;
+		if(temp_id > listing.lenght -1)
+		{
+			return;
+		}
+
+		let maakunta = document.getElementById("maakunta_tulostus_valinta").value;
+		if(listing[temp_id].maakunta == maakunta)
+		{
+			current_id = temp_id;
+			line_show(current_id);
+			return;
+		}
+		else
+		{
+			for(let i = current_id+1; i < listing.length; i++)
+			{
+				if(listing[i].maakunta == maakunta)
+				{
+					current_id = i;
+					line_show(current_id);
+					return;
+				}
+			}
+			for(let i = temp_id-2; i > 0; i--)
+			{
+				if(listing[i].maakunta == maakunta)
+				{
+					current_id = i;
+					line_show(current_id);
+					return;
+				}
+			}
+
+			form_clear_min();
+		}
+	}
+	else
+	{
+		line_save();
+	}
+}
+
+function line_previous()
+{
+	if(document.getElementById("action_state").value == "no_action")
+	{
+		let temp_id = current_id - 1;
+		if(temp_id < 0)
+		{
+			return;
+		}
+
+		let maakunta = document.getElementById("maakunta_tulostus_valinta").value;
+		
+		if(listing[temp_id].maakunta == maakunta)
+		{
+			current_id = temp_id;
+			line_show(current_id);
+			return;
+		}
+		else
+		{
+			for(let i = temp_id-1; i > 0; i--)
+			{
+				if(listing[i].maakunta == maakunta)
+				{
+					current_id = i;
+					line_show(current_id);
+					return;
+				}
+			}
+		
+		for(let i = temp_id + 2; i < listing.length; i++)
+			{
+				if(listing[i].maakunta == maakunta)
+				{
+					current_id = i;
+					line_show(current_id);
+					return;
+				}
+			}
+
+			form_clear_min();
+		}
+	}
+	else
+	{
+		form_set_new();
 	}
 }
 
@@ -457,13 +522,18 @@ let temp;
 	if(temp !== null)
 	{
 		listing = temp;
-	}
-
-		document.getElementById("maakunta").innerHTML = maakunta_select(0, "maakuntaSelect", true);
-		document.getElementById("maakunta_tu_valinta").innerHTML = maakunta_select(0, "maakunta_tulostus_valinta", false);
+		line_show(0);
+		document.getElementById("maakunta").innerHTML = maakunta_select(0, "maakuntaSelect");
+		document.getElementById("maakunta_tu_valinta").innerHTML = maakunta_select(0, "maakunta_tulostus_valinta");
 		table_refresh();
 		form_input_disable();
-		
+	}
+	else
+	{
+		form_clear();
+		form_input_disable();
+	}
+
 	document.getElementById("action_state").value = "no_action";
 }
 
@@ -529,8 +599,7 @@ function listing_purge()
 		listing = new Array();
 		localStorage.clear();
 		current_id = 0;
-		form_input_clear();
-		form_input_disable();
+		line_show(current_id);
 		table_refresh();
 	}
 }
@@ -626,35 +695,32 @@ function table_header()
 		let table = document.getElementById("email_table");
 
 		let row = table.insertRow(0);
-
 		let cell = row.insertCell(0);
-		cell.innerHTML = "Poista";
+		cell.innerHTML = "Valitse";
 
 		cell = row.insertCell(1);
-		cell.innerHTML = "Muokkaa";
+		cell.innerHTML = "ID";
 
 		cell = row.insertCell(2);
-		cell.innerHTML = "Valitse";
-/*
-		cell = row.insertCell(3);
-		cell.innerHTML = "ID";
-*/
-		cell = row.insertCell(3);
-		cell.innerHTML = "Email";
-
-		cell = row.insertCell(4);
-		cell.innerHTML = "Maakunta";
-
-		cell = row.insertCell(5);
 		cell.innerHTML = "Nimi";
 
-		cell = row.insertCell(6);
+		cell = row.insertCell(3);
 		cell.innerHTML = "Osoite";
 
-		cell = row.insertCell(7);
+		cell = row.insertCell(4);
+		cell.innerHTML = "Email";
+
+		cell = row.insertCell(5);
+		cell.innerHTML = "Maakunta";
+
+		cell = row.insertCell(6);
 		cell.innerHTML = "Ajantasalla";
 
+		cell = row.insertCell(7);
+		cell.innerHTML = "Poista";
 
+		cell = row.insertCell(8);
+		cell.innerHTML = "Muokkaa";
 }
 
 function table_clear()
@@ -669,13 +735,9 @@ function table_clear()
 function table_refresh()
 {
 	document.getElementById("tuloste").value = "";
-	document.getElementById("action_state").value = "no_action";
-	
 	let id = Number(document.getElementById("maakunta_tulostus_valinta").value);
 	table_clear();
 	table_header();
-	form_input_clear();
-	form_input_disable();
 	let table = document.getElementById("email_table");
 	
 
@@ -686,34 +748,26 @@ function table_refresh()
 			if(listing[i])
 			{
 				let row = table.insertRow(i+1);
-				let cell;
-				cell = row.insertCell(0);
-				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
-				cell.innerHTML = array.join(' ');
-	
-				cell = row.insertCell(1);
-				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
-				cell.innerHTML = array.join(' ');
 
-				cell = row.insertCell(2);
+				let cell = row.insertCell(0);
 				cell.innerHTML = String('<input type="checkbox" id=' + i + 'name="select" >');
-/*			
-				cell = row.insertCell(3);
+			
+				cell = row.insertCell(1);
 				cell.innerHTML = i;
-*/
-				cell = row.insertCell(3);
-				cell.innerHTML = listing[i].email;
-
-				cell = row.insertCell(4);
-				cell.innerHTML = maakunta_get(listing[i].maakunta);
-
-				cell = row.insertCell(5);
+	
+				cell = row.insertCell(2);
 				cell.innerHTML = listing[i].name;
 		
-				cell = row.insertCell(6);
+				cell = row.insertCell(3);
 				cell.innerHTML = String('<a href="https://' + listing[i].address + '" target="_blank">' + listing[i].address + '</a>');
 		
-				cell = row.insertCell(7);
+				cell = row.insertCell(4);
+				cell.innerHTML = listing[i].email;
+
+				cell = row.insertCell(5);
+				cell.innerHTML = maakunta_get(listing[i].maakunta);
+
+				cell = row.insertCell(6);
 				if(listing[i].up_to_date)
 				{
 					cell.innerHTML = "X";	
@@ -722,7 +776,13 @@ function table_refresh()
 				{
 					cell.innerHTML = "";	
 				}
-
+				cell = row.insertCell(7);
+				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
+				cell.innerHTML = array.join(' ');
+	
+				cell = row.insertCell(8);
+				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
+				cell.innerHTML = array.join(' ');
 			}
 		}
 	}
@@ -734,36 +794,26 @@ function table_refresh()
 			if(Number(listing[i].maakunta) == id)
 			{
 				let row = table.insertRow(counter+1);
-				let cell;
 
-				cell = row.insertCell(0);
-				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
-				cell.innerHTML = array.join(' ');
-	
-				cell = row.insertCell(1);
-				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
-				cell.innerHTML = array.join(' ');
-
-				cell = row.insertCell(2);
+				let cell = row.insertCell(0);
 				cell.innerHTML = String('<input type="checkbox" id=' + i + 'name="select" >');
-/*			
-				cell = row.insertCell(3);
+			
+				cell = row.insertCell(1);
 				cell.innerHTML = i;
-*/
 	
-				cell = row.insertCell(3);
+				cell = row.insertCell(2);
 				cell.innerHTML = listing[i].name;
 		
-				cell = row.insertCell(4);
+				cell = row.insertCell(3);
 				cell.innerHTML = String('<a href="https://' + listing[i].address + '" target="_blank">' + listing[i].address + '</a>');
 		
-				cell = row.insertCell(5);
+				cell = row.insertCell(4);
 				cell.innerHTML = listing[i].email;
 
-				cell = row.insertCell(6);
+				cell = row.insertCell(5);
 				cell.innerHTML = maakunta_get(listing[i].maakunta);
 
-				cell = row.insertCell(7);
+				cell = row.insertCell(6);
 				if(listing[i].up_to_date)
 				{
 					cell.innerHTML = "X";
@@ -774,7 +824,13 @@ function table_refresh()
 				}
 				cell.className = "up_to_date";
 
-
+				cell = row.insertCell(7);
+				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
+				cell.innerHTML = array.join(' ');
+	
+				cell = row.insertCell(8);
+				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
+				cell.innerHTML = array.join(' ');
 				counter++;
 			}
 		}
@@ -783,17 +839,10 @@ function table_refresh()
 }
 
 
-function maakunta_select(id, name, is_input)
+function maakunta_select(id, name)
 {
 	let tuloste = "";
-	if(is_input)
-	{
-		tuloste = tuloste.concat('<select class="select_maakunta" id="' + name +'">');
-	}
-	else 
-	{
-		tuloste = tuloste.concat('<select class="select_maakunta" onChange="table_refresh()" id="' + name +'">');	
-	}
+	tuloste = tuloste.concat('<select class="select_maakunta" onChange="table_refresh()" id="' + name +'">');
 
 	for(let i = 0; i < 21; i++)
 	{
@@ -803,9 +852,7 @@ function maakunta_select(id, name, is_input)
 			tuloste = tuloste.concat(' selected');
 
 		}
-
 		tuloste = tuloste.concat( '>', maakunta_get(i), '</option>');
-
 	}
 
 	tuloste = tuloste.concat("</select>");
@@ -966,10 +1013,7 @@ td::up_to_date{
 	text-align: center;
 }
 
-.top_bar{
-	text-align: center;
-background-color: #38444d;
-}
+
 ul {
   list-style-type: none;
   margin: 0;
@@ -988,7 +1032,6 @@ li a, .dropbtn {
   text-align: center;
   padding: 14px 16px;
   text-decoration: none;
-  border: 1px solid #4CAF50;
 }
 
 li a:hover, .dropdown:hover .dropbtn {
@@ -1037,40 +1080,33 @@ li.dropdown {
 
   overflow: hidden;
   background-color: #38444d;
-  border: 1px solid #4CAF50;
 }
 input[type='file'] {
   color: transparent;
-}
-
-.application_title
-{
-	color:white;
-	font-size: 4.3vh; 
 }
 </style>
 </head>
 	<body>
 		<div>
 		<table border="1">
-			<caption>Uuden version löytää osoitteesta: <a href="https://github.com/BackRoomPlan/management_software">https://github.com/BackRoomPlan/management_software</a><caption>
+			<caption>Uuden version löytää osoitteesta <a href="https://github.com/BackRoomPlan/management_software">https://github.com/BackRoomPlan/management_software</a><h1>Postituslistan hallinta</h1><caption>
 			<tr>
-				<td class="top_bar">
+				<td>
 					<span style="float: left;"><ul>
 						<li class="dropdown">
 							<a href="javascript:void(0)" class="dropbtn">Listaus</a>
 							<div class="dropdown-content">
 								<a onclick="listing_save_json()">Tallenna tiedosto</a>
-								<a onclick="listing_purge()">Tyhjennä listaus</a>
+								<a onclick="listing_purge()">Tyhjenn listaus</a>
 								<a onclick="listing_delete_selected()"> Poista valitut</a>
 								<a onclick="listing_print()">Tulosta osoitelistaus</a>
 							</div>
 						</li>
-	
+
 						<li class="dropdown">
 							<a href="javascript:void(0)" class="dropbtn">Rivi</a>
 							<div class="dropdown-content">
-								<a onclick="line_new()">Uusi Rivi</a>
+								<a onclick="form_set_new()">Uusi Rivi</a>
 								<a onclick="listing_clear_up_to_date()">Poista ajantasalla lippu</a>
 							</div>
 						</li>
@@ -1086,11 +1122,19 @@ input[type='file'] {
 							</div>
 						<li>
 					</ul></span>
-		
-					<span class="application_title">Postituslistan hallinta</span>
-		
 					<span style="float: right;"><ul>
-		
+						<li class="dropdown">
+							<input type="button" onclick="line_delete()" class="button_top" id="delete" value="poista"/>
+						</li>
+						<li class="dropdown">
+							<input type="button" onclick="line_save()" class="button_top" id="save" value="Muokkaa"/>
+						</li>
+						<li class="dropdown">
+							<input type="button" onclick="line_previous()" class="button_top" id="previous" value="Edellinen"/>
+						</li>
+						<li class="dropdown">
+							<input type="button" onclick="line_next()" class="button_top" id="next" value="Seuraava"/>
+						</li>
 						<li class="dropdown">
 							<span id="maakunta_tu_valinta" class="dropbtn"> </span>
 						</li>
@@ -1101,32 +1145,29 @@ input[type='file'] {
 			<tr><td><table>
 			<tr>
 				<th align="right">Nimi</th>
-				<td colspan="2"><input type="text" id="node_name" name="name"/></td>
+				<td><input type="text" id="node_name" name="name"/></td>
 			</tr>
 			
 			<tr>
 				<th align="right">Osoite</th>
-				<td colspan="2"><input type="text" id="node_address" name="address"/></td>
+				<td><input type="text" id="node_address" name="address"/></td>
 			</tr>
 			
 			<tr>
 				<th align="right">Email</th>
-				<td colspan="2"><input type="text" id="node_email" name="email"/></td>
+				<td><input type="text" id="node_email" name="email"/></td>
 			
 			</tr>
 
 			<tr>
 				<th align="right">Maakunta</th>
-				<td id="maakunta"  colspan="2"></td>
+				<td id="maakunta"></td>
 			</tr>
 
 			<tr>
 				<th align="right">On ajantasalla</th>
 				<td><input type="checkbox" id="is_up_to_date"/></td>
-				<td><input type="button" id="button_cancel" value="Peruuta" onClick="line_cancel()"/><input type="button" id="button_save" onClick="line_save()" value="Tallenna"/></td>
-			</tr></table></td>
-
-			</tr>
+			</tr></table></td></tr>
 			<tr><td align="right">Lataa listaus tiedostosta<input type="file" id="listing_file" onchange="listing_load_json()" value="Lataa tiedosto" />Lisää listaukseen tiedostosta<input type="file" id="listing_append" onchange="listing_append_json()" value="Lisää tiedostosta" />Lisää puolipisteellä eroteltu listaus<input type="file" id="listing_append_semicolon" onchange="listing_append_semicolon()" value="Lisää tiedostosta" /></td></tr>
 
 			<tr>
