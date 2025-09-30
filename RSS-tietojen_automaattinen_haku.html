@@ -1,0 +1,439 @@
+<!--
+ Copyright (c) 2025 Mika Manninen mika.mannin@gmail.com
+ 
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so, subject to
+ the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included
+ in all copies or substantial portions of the Software.
+ 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+
+<!doctype html>
+<html>
+<head>
+<script>
+
+let listing = new Array();
+let current_id = 0;
+
+function table_clear()
+{
+	let table = document.getElementById("table_rss");
+	while(table.rows.length > 0)
+	{
+  		table.deleteRow(0);
+	}
+}
+
+function table_header()
+{
+		let table = document.getElementById("table_rss");
+
+		let row = table.insertRow(0);
+		let cell = row.insertCell(0);
+		cell.innerHTML = "Valitse";
+
+		cell = row.insertCell(1);
+		cell.innerHTML = "ID";
+
+		cell = row.insertCell(2);
+		cell.innerHTML = "Nimi";
+
+		cell = row.insertCell(3);
+		cell.innerHTML = "Osoite";
+
+		cell = row.insertCell(4);
+		cell.innerHTML = "Email";
+
+		cell = row.insertCell(5);
+		cell.innerHTML = "Maakunta";
+
+		cell = row.insertCell(6);
+		cell.innerHTML = "Ajantasalla";
+
+		cell = row.insertCell(7);
+		cell.innerHTML = "Poista";
+
+		cell = row.insertCell(8);
+		cell.innerHTML = "Muokkaa";
+}
+
+function table_refresh()
+{
+	table_clear();
+	table_header();
+
+	for(let i = 0; i < listing.length; i++)
+		{
+			if(listing[i])
+			{
+				let row = table.insertRow(i+1);
+
+				let cell = row.insertCell(0);
+				cell.innerHTML = String('<input type="checkbox" id=' + i + 'name="select" >');
+			
+				cell = row.insertCell(1);
+				cell.innerHTML = i;
+	
+				cell = row.insertCell(2);
+				cell.innerHTML = listing[i].name;
+		
+				cell = row.insertCell(3);
+				cell.innerHTML = String('<a href="https://' + listing[i].address + '" target="_blank">' + listing[i].address + '</a>');
+		
+				cell = row.insertCell(4);
+				cell.innerHTML = listing[i].email;
+
+				cell = row.insertCell(5);
+				cell.innerHTML = maakunta_get(listing[i].maakunta);
+
+				cell = row.insertCell(6);
+				if(listing[i].up_to_date)
+				{
+					cell.innerHTML = "X";	
+				}
+				else
+				{
+					cell.innerHTML = "";	
+				}
+				cell = row.insertCell(7);
+				array= ['<input type="button" onclick="line_action_deleteID(', i, ')" value="Poista">'];
+				cell.innerHTML = array.join(' ');
+	
+				cell = row.insertCell(8);
+				array= ['<input type="button" onclick="line_edit(', i, ')" value="Muokkaa">'];
+				cell.innerHTML = array.join(' ');
+			}
+		}
+	}
+}
+
+
+window.onload = function()
+{
+	listing_load_localStorage();
+}
+
+function line_save()
+{
+	listing.push({name : node_name, address : node_address, email : node_email, maakunta : maakuntaID, up_to_date : up_to_date});
+	current_id = listing.length - 1;
+
+	listing_save_to_localStore();
+	table_refresh();
+}
+
+function update_currentID(new_id)
+{
+	previousID = currentID;
+	currentID = Number(new_id);
+}
+
+function line_show(id)
+{
+	if(is_id_valid(id))
+	{
+	}
+	else
+	{
+		form_clear();
+	}
+}
+
+function line_action_delete(to_remove)
+{
+	if (to_remove > -1 && to_remove <= listing.length -1)
+	{
+		listing = listing.slice(0, to_remove).concat(listing.slice(to_remove + 1));
+		listing_save_to_localStore();
+		check_and_set_id_range(to_remove - 1);
+		line_show(current_id);
+		table_refresh();
+	}
+}
+
+function line_action_deleteID(to_remove) {
+
+	if(confirm("Haluatko poistaa rivin?") === false)
+	{
+		return;
+	}
+
+	line_action_delete(Number(to_remove));
+}
+
+function listing_delete_selected()
+{
+	if(confirm("Olet poistamassa yhden tai useampaa tietuetta<br>Haluatko jatkaa") == false)
+	{
+		return 0;
+	}
+
+	let table = document.getElementById("table_rss");
+	let array = [];
+
+	for(let i = 1; i < table.rows.length; i++)
+	{
+		let cell = table.rows[i].cells[0];
+		let child = cell.children[0];
+
+		if(child.checked)
+		{
+			array.push(i-1);
+		}
+	}
+
+	for(i=0; i < array.length; i++)
+	{
+		index = array[i];
+		delete listing[index];
+	}
+
+	listing = listing.filter(Boolean);
+	listing_save_to_localStore();
+	table_refresh();
+}
+
+
+
+function listing_load_json()
+{
+	var x = document.getElementById("listing_file");
+	const tiedosto = x.files[0];
+	if (!tiedosto) return;
+
+	const lukija = new FileReader();
+	lukija.onload = function(e) {
+		try {
+			listing = JSON.parse(e.target.result);
+			listing_save_to_localStore();
+			table_refresh();
+					
+		} 
+		catch (err) {
+			alert("JSON tiedosto ei ollut kelvollinen");
+		}
+	};
+
+	lukija.readAsText(tiedosto);
+
+	document.getElementById("listing_file").value = "";
+}
+
+function listing_load_localStorage()
+{
+let temp;
+	temp = JSON.parse(localStorage.getItem("tietokanta"));
+
+	if(temp !== null)
+	{
+		listing = temp;
+	}
+
+		document.getElementById("maakunta").innerHTML = maakunta_select(0, "maakuntaSelect", true);
+		document.getElementById("maakunta_tu_valinta").innerHTML = maakunta_select(0, "maakunta_tulostus_valinta", false);
+		table_refresh();
+		form_input_disable();
+		
+	document.getElementById("action_state").value = "no_action";
+}
+
+function listing_save_json()
+{
+	let temp = JSON.stringify(listing);
+	const blob = new Blob([temp], {type: 'text/csv'});
+	const dataUrl = URL.createObjectURL(blob);
+
+	window.open(dataUrl);
+}
+
+function listing_save_to_localStore()
+{
+	localStorage.setItem("tietokanta" ,JSON.stringify(listing));
+}
+
+</script> 
+<style>
+input[type="text"]
+{
+    width: 100%;
+    box-sizing: border-box /* Just in case if you have defined
+                           left or right padding to the input */
+}
+table
+{
+	margin : auto;
+	width: 75%;
+	box-sizing: border-box /* Just in case if you have defined */
+}
+table[id="table_rss"]
+{
+	box-sizing: border-box /* Just in case if you have defined */
+}
+html
+{
+	scroll-behavior:smooth;
+}
+td::up_to_date{
+	text-align: center;
+}
+
+.top_bar{
+	text-align: center;
+background-color: #38444d;
+}
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #38444d;
+}
+
+li {
+  float: left;
+}
+
+li a, .dropbtn {
+  display: inline-block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  border: 1px solid #4CAF50;
+}
+
+li a:hover, .dropdown:hover .dropbtn {
+  background-color: red;
+}
+
+li.dropdown {
+  display: inline-block;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+}
+
+.dropdown-content a {
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  text-align: left;
+}
+
+#table_rss tr:hover{
+	background-color: lightgray;
+}
+
+.dropdown-content a:hover {background-color: #f1f1f1;}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+.button_top
+{
+  display: inline-block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+  list-style-type: none;
+
+  overflow: hidden;
+  background-color: #38444d;
+  border: 1px solid #4CAF50;
+}
+input[type='file'] {
+  color: transparent;
+}
+
+.application_title
+{
+	color:white;
+	font-size: 4.3vh; 
+}
+</style>
+</head>
+	<body>
+		<div>
+		<table border="1">
+			
+			<tr>
+				<td class="top_bar">
+					<span style="float: left;"><ul>
+						<li class="dropdown">
+							<a href="javascript:void(0)" class="dropbtn">Listaus</a>
+							<div class="dropdown-content">
+								<a onclick="listing_save_json()">Tallenna tiedosto</a>
+								<a onclick="listing_purge()">Tyhjenn listaus</a>
+								<a onclick="listing_delete_selected()"> Poista valitut</a>
+								<a onclick="listing_print()">Tulosta osoitelistaus</a>
+							</div>
+						</li>
+	
+						<li class="dropdown">
+							<a href="javascript:void(0)" class="dropbtn">Rivi</a>
+							<div class="dropdown-content">
+								<a onclick="line_new()">Uusi Rivi</a>
+								<a onclick="listing_clear_up_to_date()">Poista ajantasalla lippu</a>
+							</div>
+						</li>
+
+
+						<li class="dropdown">
+							<a href="javascript:void(0)" class="dropbtn">Järjestele</a>
+							<div class="dropdown-content">
+								<a onclick="listing_sort_name()">Nimi</a>
+								<a onclick="listing_sort_address()">Web-osoite</a>
+								<a onclick="listing_sort_email()">Sähköposti</a>
+								<a onclick="listing_sort_maakunta()">Maakunnittain</a>
+							</div>
+						<li>
+					</ul></span>
+		
+					<span class="application_title">Postituslistan hallinta</span>
+		
+					<span style="float: right;"><ul>
+						<li class="dropdown">
+							<a onclick="line_cancel()" id="cancel">Peruuta</a>
+						</li>
+						<li class="dropdown">
+							<a onclick="line_save()" id="save">Tallenna</a>
+						</li>
+						<li class="dropdown">
+							<span id="maakunta_tu_valinta" class="dropbtn"> </span>
+						</li>
+					</ul>
+
+				</td>
+			</tr>
+
+			<tr>
+				<td colspan=2><table id="table_rss" ></td>
+			</tr>
+		</table>
+	<input type="hidden" id="action_state" />
+	</div>
+	</body>
+</html>
