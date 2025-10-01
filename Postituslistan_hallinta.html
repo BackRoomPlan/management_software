@@ -572,13 +572,51 @@ function listing_print_up_to_date()
 	/// tulosta listaukseen vain he osoitteet jotka on valittu
 	let listaus = "";
 
+	if(listing.length > 0 && array.length > 0)
+	{
+		for(let i = 0; i < listing.length; i++)
+		{
+			if(listing[i].up_to_date == true)
+			{
+				listaus = listaus.concat("; ", listing[i].email);
+			}
+		}
+	}
+	document.getElementById("tuloste").value = listaus;
+}
+
+function listing_print_by_province()
+{
+	/// tulosta listaukseen vain he osoitteet jotka on valittu
+	let listaus = "";
+
 	let id = Number(document.getElementById("maakunta_tulostus_valinta").value);
 
 	if(listing.length > 0 && array.length > 0)
 	{
 		for(let i = 0; i < listing.length; i++)
 		{
-			if(listing[i].up_to_date == true)
+			if(listing[i].maakunta == id)
+			{
+				listaus = listaus.concat("; ", listing[i].email);
+			}
+		}
+	}
+	document.getElementById("tuloste").value = listaus;
+}
+
+function listing_print_up_to_date_by_province()
+{
+	/// tulosta listaukseen vain he osoitteet jotka on valittu
+	let listaus = "";
+
+	let id = Number(document.getElementById("maakunta_tulostus_valinta").value);
+
+	if(listing.length > 0 && array.length > 0)
+	{
+		for(let i = 0; i < listing.length; i++)
+		{
+			if(listing[i].up_to_date == true && listing[i].maakunta == id)
 			{
 				listaus = listaus.concat("; ", listing[i].email);
 			}
@@ -685,6 +723,18 @@ function listing_sort_maakunta()
 	listing_save_to_localStore()
 }
 
+function listing_sort_up_to_date_on()
+{
+	if(listing.lenght <= 1)
+	{
+		return;
+	}
+
+	listing.sort((a, b) => a.up_to_date_on - b.up_to_date_on)
+	table_refresh();
+	listing_save_to_localStore()
+}
+
 
 function table_header()
 {
@@ -720,7 +770,10 @@ function table_header()
 		cell.innerHTML = "Ajantasalla";
 
 		cell = row.insertCell(8);
-		cell.innerHTML = "Ajantasalla päivänä";
+		cell.innerHTML = "PVM";
+
+		cell = row.insertCell(9);
+		cell.innerHTML = "KLO";
 
 }
 
@@ -750,6 +803,18 @@ function get_date_string(unix_time)
 	let date = new Date(unix_time);
 	
 	return date.toLocaleString(locale, options);
+}
+
+function get_time_string(unix_time)
+{
+	if(unix_time <= -1)
+	{
+		return "";
+	}
+
+	let date = new Date(unix_time);
+
+	return date.toLocaleTimeString();
 }
 
 function table_refresh()
@@ -811,8 +876,10 @@ function table_refresh()
 				}
 				
 				cell = row.insertCell(8);
-				let date = new Date(listing[i].up_to_date_on);
 				cell.innerHTML = get_date_string(listing[i].up_to_date_on);
+
+				cell = row.insertCell(9);
+				cell.innerHTML = get_time_string(listing[i].up_to_date_on);
 
 			}
 		}
@@ -1042,7 +1109,7 @@ input[type="text"]
 table
 {
 	margin : auto;
-	width: 75%;
+	width: 85%;
 	box-sizing: border-box /* Just in case if you have defined */
 }
 table[id="email_table"]
@@ -1110,7 +1177,10 @@ li.dropdown {
 #email_table tr:hover{
 	background-color: lightgray;
 }
-
+#email_table tr,td{
+	//background-color: lightgray;
+	 border-bottom: 2px solid #ddd;
+}
 .dropdown-content a:hover {background-color: #f1f1f1;}
 
 .dropdown:hover .dropdown-content {
@@ -1157,6 +1227,8 @@ input[type='file'] {
 								<a onclick="listing_print()">Tulosta osoitelistaus</a>
 								<a onclick="listing_print_selected()">Tulosta valitut osoitteet</a>
 								<a onclick="listing_print_up_to_date()">Tulosta ajantasalla olevat osoitteet</a>
+								<a onclick="listing_print_up_to_date_by_province()">Tulosta maakunnan perusteella ajantasalla olevat osoitteet</a>
+								<a onclick="listing_print_by_province()">Tulosta valitun maakunnan mukaan</a>
 							</div>
 						</li>
 	
@@ -1176,6 +1248,7 @@ input[type='file'] {
 								<a onclick="listing_sort_address()">Web-osoite</a>
 								<a onclick="listing_sort_email()">Sähköposti</a>
 								<a onclick="listing_sort_maakunta()">Maakunnittain</a>
+								<a onclick="listing_sort_up_to_date_on()">Ajantasalla merkinnän mukaan</a>
 							</div>
 						<li>
 					</ul></span>
